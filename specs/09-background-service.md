@@ -149,6 +149,67 @@ class TriggerCondition {
 - Motion sensor active between 00:00–06:00 → alert immediately via `karmik.notify`
 - TV turned on → start "Focus block" agent (dim lights, silence notifications)
 
+### 6. Focus Mode Trigger
+
+Fires when a focus session ends or when a focus milestone is reached.
+
+```dart
+class FocusTrigger extends Trigger {
+  final FocusTriggerType type;
+  final String agentId;
+}
+
+enum FocusTriggerType {
+  onSessionEnd,           // fires when a Pomodoro session completes
+  onSessionAbandoned,     // fires when user ends a session early
+  onDailyGoalReached,     // fires when cumulative focus time hits the daily goal
+}
+```
+
+**Example**: Focus Coach agent fires on `onSessionEnd` → delivers session stats notification
+("25-minute session complete. You've focused for 1h 40m today. Take a 5-minute break?").
+
+### 7. Health Trigger
+
+Fires on health milestones from Android Health Connect or Apple HealthKit.
+Not available on desktop or Web.
+
+```dart
+class HealthTrigger extends Trigger {
+  final HealthTriggerType type;
+  final int? threshold;     // for step-count triggers
+  final String agentId;
+}
+
+enum HealthTriggerType {
+  onDailyStepGoalReached,    // fires once per day when step threshold is hit
+  onLowActivityAlert,        // fires at end of day if steps < threshold (sedentary reminder)
+  onSleepDataAvailable,      // fires in the morning when overnight sleep data syncs
+}
+```
+
+**Example**: Wellness Check agent fires on `onSleepDataAvailable` → reads `health.sleep` and
+`health.steps` → delivers a morning briefing with sleep quality + yesterday's activity.
+
+### 8. Wake Word Trigger
+
+Fires when the wake word engine detects the configured phrase ("Hey Karmik").
+See `specs/20-voice.md` for the full wake word implementation.
+
+```dart
+class WakeWordTrigger extends Trigger {
+  final String agentId;             // agent to activate on detection
+  final double confidenceThreshold; // 0.0–1.0, default 0.7
+}
+```
+
+Platform: Android (background service), macOS (LaunchAgent), Windows (service), Linux
+(systemd). Not available on iOS or Web.
+
+**Behavior**: wake word detection runs continuously in the foreground service. On detection,
+the TriggerEngine fires a `WakeWordTriggerEvent` that spawns the configured agent (or the
+default agent if none is configured) with the transcribed utterance as its input.
+
 ## Orchestrator Pool
 
 Manages concurrent agent sessions spawned by triggers.

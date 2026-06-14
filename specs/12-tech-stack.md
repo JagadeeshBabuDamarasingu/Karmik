@@ -113,6 +113,9 @@ remote providers are available for inference. The model manager shows an info me
 | MLC-LLM | Secondary runtime — better GPU utilization on supported hardware |
 | ONNX Runtime | Embedding model inference (all-MiniLM-L6-v2); available all platforms except Web |
 | Whisper.cpp | On-device speech-to-text (C++, via Dart FFI) |
+| Piper TTS | On-device text-to-speech (C++/ONNX, via Dart FFI, ~50MB per voice); see `specs/20-voice.md` |
+| openWakeWord | Always-on wake word detection (<5MB, <2% CPU, on-device); see `specs/20-voice.md` |
+| Picovoice Porcupine | Alternative wake word engine (opt-in, requires API key, higher accuracy) |
 
 **llama.cpp compile targets and GPU backends**:
 
@@ -173,9 +176,10 @@ passphrase the user enters on each visit. Data is stored per-origin in IndexedDB
 
 **Database files** (all in `getApplicationDocumentsDirectory()`):
 ```
-karmik.db          — conversations, agents, tasks, audit log (encrypted)
+karmik.db          — conversations, agents, tasks, snippets, reading list, audit log (encrypted)
 karmik_memory.db   — long-term memories + vectors (encrypted, sqlite-vec enabled)
 karmik_models.db   — model catalog cache, download state (not encrypted — no sensitive data)
+karmik_docs.db     — documentation browser cache + embeddings (encrypted, sqlite-vec enabled)
 ```
 
 ### Networking

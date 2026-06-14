@@ -183,6 +183,17 @@ Pre-built agents available on first launch. Users can clone and customize.
 | Meeting Notes | ReAct | microphone.record, tasks.create, calendar.update | Call recording → structured notes |
 | Research | Plan-Execute | http.get, browser.fetch, memory.store | Deep research with source tracking |
 | Home Automation | ReAct + Co-pilot | smarthome.*, location.current | Smart device control; dangerous commands (lock/camera) always use Co-pilot |
+| Focus Coach | ReAct | focus.*, tasks.list, calendar.list_events | Manages Pomodoro sessions, blocks distractions, tracks daily focus stats |
+| Daily Journal | ReAct | microphone.record, stt.transcribe, notes.create, memory.store | Voice journaling → structured note with automatic tagging |
+| Daily Standup | Autopilot | tasks.list, calendar.list_events, git.log | Generates standup update at a scheduled time, delivers as notification |
+| Expense Tracker | ReAct + Co-pilot | screen.ocr, camera.capture_photo, memory.store, notes.append | Receipt scan → structured expense log entry |
+| Wellness Check | Autopilot | health.steps, health.sleep, health.heart_rate | Morning briefing extension with yesterday's health data + daily suggestion |
+| Reading Digest | Autopilot | readinglist.list, readinglist.read | Daily summary of unread saved articles grouped by topic |
+| Git Assistant | ReAct | git.*, github.*, memory.store | Commit messages, PR descriptions, change summaries, issue triage |
+| Code Reviewer | Plan-Execute | git.diff, github.get_pr, code.run, snippets.search | Multi-file PR review with findings and inline suggestions |
+| Doc Helper | ReAct | docs.fetch, docs.search, snippets.store | Answer questions from locally cached documentation |
+| Shell Assistant | ReAct + Co-pilot | shell.run, devenv.*, files.* | System diagnostics, process management, safe shell task execution |
+| API Tester | ReAct | http.get, http.post, memory.store, snippets.store | Natural language → REST API calls with schema inference and snippet saving |
 
 ## Agent Executor Lifecycle
 
