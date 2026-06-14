@@ -245,3 +245,72 @@ User requests inference
 ```
 
 The `ModelRuntimeFactory` resolves this mapping and returns the appropriate `ModelRuntime` instance.
+
+## Extended Thinking (Reasoning Mode)
+
+Some models expose a "thinking" budget — the model reasons internally before producing its
+final answer, improving accuracy on complex multi-step problems.
+
+**Supported backends**:
+| Backend | Model | Thinking mechanism |
+|---|---|---|
+| llama.cpp | DeepSeek-R1 variants | Native `<think>` token sequence; streamed as separate `ThinkingEvent` |
+| AnthropicAdapter | claude-sonnet-4-6, claude-opus-4-8 | `thinking` parameter with `budget_tokens` |
+| GeminiAdapter | Gemini Flash Thinking | `thinkingConfig.thinkingBudget` |
+| OpenAICompatAdapter | Any model that exposes reasoning tokens | `reasoning_effort: "low|medium|high"` |
+
+**API extension on `InferenceParams`**:
+
+```dart
+class InferenceParams {
+  // ... existing fields
+  final ThinkingConfig? thinking;
+}
+
+class ThinkingConfig {
+  final bool enabled;
+  final int budgetTokens;   // how many tokens the model may use for reasoning
+                            // recommended: 1024 (quick) / 8192 (deep)
+}
+```
+
+**Streaming**: Thinking tokens arrive as `ThinkingEvent` before the first `TokenEvent`. The
+UI renders them in a collapsible "Thinking..." block (collapsed by default, expandable).
+
+**Cost**: Thinking tokens count toward input + output token totals and are billed by the
+remote provider at the same rate as regular tokens. For local models, they add latency
+but no monetary cost.
+
+**When to use**: The agent's configured `OrchestrationMode` can specify a default thinking
+budget. Users can toggle it per-message with the `/think` slash command (see `specs/10-ui.md`).
+
+## Model Auto-Routing
+
+When an agent has `modelOverride: null` and no global default is set, or when the user
+explicitly enables auto-routing, Karmik selects the best model for the task:
+
+```dart
+class ModelRouter {
+  ModelConfig selectModel(InferenceRequest request, List<ModelConfig> available) {
+    // Vision content → prefer vision-capable model
+    if (request.messages.any((m) => m.hasImageContent)) {
+      return available.firstWhere((m) => m.metadata.supportsVision, orElse: () => _default(available));
+    }
+    // Tool-heavy task → prefer model with supportsToolUse
+    if (request.tools.isNotEmpty) {
+      return available.firstWhere((m) => m.metadata.supportsToolUse, orElse: () => _default(available));
+    }
+    // Short/simple message (< 50 tokens estimate) → use smallest fast model
+    if (_estimateTokens(request) < 50) {
+      return available.reduce((a, b) => a.metadata.parametersBillions < b.metadata.parametersBillions ? a : b);
+    }
+    return _default(available);
+  }
+
+  ModelConfig _default(List<ModelConfig> available) =>
+    available.firstWhere((m) => m.isGlobalDefault, orElse: () => available.first);
+}
+```
+
+Auto-routing is off by default (agent's configured model is always used). Enabled via
+Settings → Models → "Smart routing" toggle, or per-agent in the agent's model settings.

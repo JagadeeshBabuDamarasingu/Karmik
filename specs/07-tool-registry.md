@@ -247,6 +247,38 @@ prompts.use
   Output: { "prompt": string }
 ```
 
+### Code Execution Tools
+
+Sandboxed code execution in an isolated Dart isolate. No network, no filesystem access beyond
+a temp directory. Designed for data transformation, quick calculations, and script-driven
+reasoning — not for running arbitrary system commands.
+
+```
+code.run
+  → Execute a Dart script in a sandboxed isolate and return its output
+  Input: {
+    "code": string,           // full Dart program with a main() entry point
+    "timeoutSeconds": int?    // default 10, max 30
+  }
+  Output: { "stdout": string, "stderr": string, "exitCode": int }
+  Sandbox: dart:core, dart:math, dart:convert only — no dart:io, no dart:ffi, no platform channels
+
+code.eval_js
+  → Evaluate a JavaScript expression using the QuickJS engine (bundled, no V8)
+  Input: {
+    "code": string,           // JS expression or function body
+    "timeoutSeconds": int?    // default 5, max 15
+  }
+  Output: { "result": string, "error": string? }
+  Sandbox: ES2020 core — no fetch, no DOM, no Node APIs
+```
+
+**Use cases**: unit conversions, date arithmetic, JSON transformation, markdown table
+generation, regex extraction from text. For heavier computation, agents should use
+`http.post` to call an external service instead.
+
+**Permission**: `tools.code.run` must be explicitly granted per agent. Default: off.
+
 ### Karmik Internal Tools
 
 ```
@@ -259,6 +291,16 @@ karmik.notify
   → Send a notification to the user from a background agent
   Input: { "title": string, "body": string, "actions"?: [{ "label", "intent" }] }
   Output: { "delivered": bool }
+
+karmik.checkpoint
+  → Save a named checkpoint of the current session state (for rollback)
+  Input: { "label": string? }
+  Output: { "checkpointId": string }
+
+karmik.rollback
+  → Restore session state to a named checkpoint (removes messages after the checkpoint)
+  Input: { "checkpointId": string }
+  Output: { "restored": bool, "messagesRemoved": int }
 ```
 
 ## MCP Server Support

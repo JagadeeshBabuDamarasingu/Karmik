@@ -154,6 +154,41 @@ class ProviderConfig {
 }
 ```
 
+## Token Usage & Cost Tracking
+
+Every remote inference call records token counts. This data is stored in `karmik.db` alongside
+the message and surfaced in the UI.
+
+```dart
+class InferenceUsage {
+  final int inputTokens;
+  final int outputTokens;
+  final int thinkingTokens;  // 0 if thinking is not enabled
+  final double estimatedCostUsd; // 0.0 for local models
+}
+```
+
+**Cost lookup table** (stored in `karmik_models.db`, periodically refreshed):
+
+| Provider | Model | Input (per 1M tokens) | Output (per 1M tokens) |
+|---|---|---|---|
+| Anthropic | claude-haiku-4-5 | $1.00 | $5.00 |
+| Anthropic | claude-sonnet-4-6 | $3.00 | $15.00 |
+| Anthropic | claude-opus-4-8 | $15.00 | $75.00 |
+| Google | Gemini Flash | $0.10 | $0.40 |
+| Google | Gemini Pro | $1.25 | $5.00 |
+| Groq | llama-3.3-70b | $0.59 | $0.79 |
+| OpenRouter | varies by model | per-model from API | per-model from API |
+| Local (any) | — | $0.00 | $0.00 |
+
+Groq and OpenRouter pricing is fetched live from their `/models` endpoint and cached for 24h.
+For models where cost cannot be determined, cost is shown as "unknown".
+
+**Session total**: Cumulative cost for the current session is shown via the `/cost` slash command
+and in the chat header when remote inference is active.
+
+**Per-message cost**: Shown as a tiny annotation below each assistant message (e.g., `↳ 342 in / 89 out · $0.001`). Toggle in Settings → Appearance → "Show token costs".
+
 ## Failure Handling
 
 | Scenario | Behavior |

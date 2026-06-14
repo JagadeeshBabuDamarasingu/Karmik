@@ -213,10 +213,82 @@ Sub-agents spawned by the planner share:
 
 Sub-agents are ephemeral — they do not persist memory or history.
 
+## Session Checkpoints & Rollback
+
+Inspired by Cursor's checkpoint system. The agent executor automatically saves a checkpoint
+**before each tool execution**. The user can roll back to any checkpoint, undoing the
+conversation messages and tool effects that came after it.
+
+```dart
+class SessionCheckpoint {
+  final String id;             // UUID
+  final String sessionId;
+  final String label;          // auto-label: "Before [tool_name]" or user-set
+  final DateTime createdAt;
+  final int messageCount;      // how many messages in context at this point
+  final List<Message> messages; // snapshot of the full context at checkpoint time
+}
+```
+
+**Checkpoint trigger points**:
+- Before every `ToolCall` (automatic, unlabeled)
+- On user request via `karmik.checkpoint` tool or the `/checkpoint` slash command (user-labeled)
+- Before any Co-pilot action card is approved (ensures rollback is always possible after approval)
+
+**Rollback behavior**:
+- Messages after the checkpoint are removed from the ephemeral context
+- The Tier 2 (SQLite) history is **not** reverted — rolled-back messages are soft-deleted
+  (marked `is_rolled_back = true`), not physically deleted, preserving auditability
+- Tool effects (e.g., a task that was created) are **not** automatically undone — the agent
+  is re-prompted with: "Session was rolled back to before this action. If you need to undo
+  the external effect, ask me and I will help."
+- Checkpoints older than the session are not available (checkpoints are ephemeral, not persisted)
+
+**UI surface**: In the chat view, each assistant turn has a `···` overflow menu with
+"Roll back to here". The user sees a confirmation: "This will remove X messages from this
+conversation. Continue?"
+
+Maximum checkpoints retained per session: 50 (FIFO eviction of oldest).
+
+## Pinned Context (Always-Include)
+
+Each agent can have a "Pinned Context" block — free-form markdown text that is always
+injected into the agent's context between the base system prompt and the first user message.
+Think of it as a per-agent `CLAUDE.md` or `.cursorrules` equivalent.
+
+```dart
+class AgentConfig {
+  // ... existing fields
+  final String? pinnedContext;  // markdown, injected after system prompt, before history
+}
+```
+
+**Use cases**:
+- "Always respond in Portuguese"
+- "The user's name is Jagadeesh. Their timezone is IST (+5:30)."
+- "Current project: Karmik mobile app. Stack: Flutter + Dart + llama.cpp."
+- Custom instructions that apply to every conversation with this agent
+
+**Where it appears in context**:
+```
+[system_prompt]
+[pinned_context]   ← always here, even on first message
+[memory_injection] ← relevant semantic memories
+[conversation_history]
+[current_user_message]
+```
+
+**UI**: Editable in Agent Settings → Persona → "Pinned context" text field (below the system
+prompt editor). Character limit: 2,000. Shows a live token count estimate.
+
+**Interaction with plugins**: Plugin rules (from `specs/06-plugin-system.md`) are injected
+after pinned context. The order is: `system_prompt → pinned_context → plugin_rules → history`.
+
 ## Agent Import / Export
 
 Agents can be exported as a `.karmik-agent` file (JSON, optionally encrypted).
-The export includes: config, system prompt, plugin references (not plugin code), tool permissions.
+The export includes: config, system prompt, pinned context, plugin references (not plugin code),
+tool permissions.
 Memory is not exported by default (opt-in, separate export).
 
 This enables agent sharing in the future community/marketplace.
