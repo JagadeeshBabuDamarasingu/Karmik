@@ -194,6 +194,8 @@ Pre-built agents available on first launch. Users can clone and customize.
 | Doc Helper | ReAct | docs.fetch, docs.search, snippets.store | Answer questions from locally cached documentation |
 | Shell Assistant | ReAct + Co-pilot | shell.run, devenv.*, files.* | System diagnostics, process management, safe shell task execution |
 | API Tester | ReAct | http.get, http.post, memory.store, snippets.store | Natural language → REST API calls with schema inference and snippet saving |
+| Desktop Automation | ReAct + Co-pilot | computer.*, automation.*, screen.capture, screen.ocr, files.* | GUI automation: fill forms, record macros, extract data from apps |
+| Automation Workflow | ReAct | webhook.send, tasks.list, calendar.list_events, memory.store | Design and manage conditional automation workflows and webhook integrations |
 
 ## Agent Executor Lifecycle
 

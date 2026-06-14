@@ -774,7 +774,49 @@ voice.mode_off
 
 See `specs/20-voice.md` for voice-first mode behavior and UI.
 
-## MCP Server Support
+### Computer Use Tools
+
+See `specs/23-computer-use.md` for full implementation details (platform APIs, coordinate
+system, element finder strategies, safety model).
+
+```
+computer.screenshot  → Screenshot of screen or region       Input: { "region"?: {x,y,w,h}, "display"?: int }
+computer.find_element → Find UI element by text/image/role  Input: { "text"?: string, "role"?: string, "image"?: string }
+computer.click       → Click at coordinate or element       Input: { "x"?: int, "y"?: int, "button"?: string, "clicks"?: int }  // Co-pilot
+computer.type        → Type text at cursor                  Input: { "text": string, "clearFirst"?: bool }  // Co-pilot
+computer.key         → Press keyboard shortcut              Input: { "key": string }  // Co-pilot, e.g. "cmd+c"
+computer.scroll      → Scroll in a direction                Input: { "x"?: int, "y"?: int, "direction": string, "amount"?: int }
+computer.drag        → Drag between coordinates             Input: { "fromX": int, "fromY": int, "toX": int, "toY": int }  // Co-pilot
+computer.get_clipboard → Read clipboard                     Input: {}
+computer.set_clipboard → Write clipboard text               Input: { "text": string }
+```
+
+```
+automation.record      → Start recording a macro            Input: { "name": string }  // Co-pilot
+automation.stop_record → Stop and save a macro              Input: { "recordingId": string }
+automation.play        → Replay a saved macro               Input: { "macroId": string, "batchApproval"?: bool }  // Co-pilot
+automation.list_macros → List saved macros                  Input: {}
+automation.delete_macro → Delete a macro                    Input: { "id": string }
+```
+
+**Platform**: macOS, Windows, Linux only. Not available on Android, iOS, or Web.
+**Permission**: `tools.computer.*` off by default. Requires explicit grant + Accessibility
+permission (macOS/Linux) or no extra OS permission (Windows).
+All input actions (`click`, `type`, `key`, `drag`) are always Co-pilot.
+
+### Webhook Tool
+
+```
+webhook.send
+  → POST JSON data to an external URL
+  Input: { "url": string, "payload": {}, "headers"?: {}, "method"?: "POST|PUT|PATCH" }
+  Output: { "status": int, "body": string }
+  Co-pilot: first use per URL (user approves the destination domain)
+```
+
+**Permission**: `tools.webhook.send` off by default.
+**Privacy Mode**: blocked for public internet URLs; allowed for LAN IPs.
+See `specs/24-automation-workflows.md` for inbound webhooks and iOS Shortcuts integration.
 
 Full MCP documentation (client and server) is in `specs/19-mcp.md`.
 

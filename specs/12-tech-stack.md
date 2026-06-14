@@ -23,6 +23,8 @@ All persistence is SQLite-based (no external database process required).
 | flutter_riverpod | ^2.x | State management |
 | go_router | ^14.x | Declarative navigation |
 | flutter_animate | ^4.x | Micro-animations |
+| flutter_localizations | bundled | i18n support (ARB files, ICU plurals, RTL layout) |
+| intl | ^0.19.x | Locale-aware date, number, and plural formatting |
 
 ### Platform Native Layers
 
@@ -180,6 +182,8 @@ karmik.db          — conversations, agents, tasks, snippets, reading list, aud
 karmik_memory.db   — long-term memories + vectors (encrypted, sqlite-vec enabled)
 karmik_models.db   — model catalog cache, download state (not encrypted — no sensitive data)
 karmik_docs.db     — documentation browser cache + embeddings (encrypted, sqlite-vec enabled)
+karmik_traces.db   — execution traces for observability/debugging (encrypted, 30-day TTL)
+karmik_sync.db     — sync state, device registry, vector clocks (encrypted)
 ```
 
 ### Networking

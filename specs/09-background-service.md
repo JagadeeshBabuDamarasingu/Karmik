@@ -210,6 +210,38 @@ Platform: Android (background service), macOS (LaunchAgent), Windows (service), 
 the TriggerEngine fires a `WakeWordTriggerEvent` that spawns the configured agent (or the
 default agent if none is configured) with the transcribed utterance as its input.
 
+### 9. Inbound Webhook Trigger
+
+Fires when Karmik's webhook server (`localhost:5176`) receives an HTTP POST request.
+See `specs/24-automation-workflows.md` for full documentation.
+
+```dart
+class WebhookTrigger extends Trigger {
+  final String id;               // UUID (becomes URL path: /webhook/{id})
+  final String? authToken;       // required Bearer token for the webhook endpoint
+  final String agentId;
+  final String taskTemplate;     // can reference {{ payload.field }} from POST body
+  final String? condition;       // condition DSL (see below)
+}
+```
+
+Platform: Android (background service), macOS, Windows, Linux. iOS: foreground only.
+
+### Condition Expressions (All Trigger Types)
+
+Every trigger type now supports an optional `condition` field — a DSL expression evaluated
+before the agent is spawned. See `specs/24-automation-workflows.md` for full DSL syntax.
+
+```dart
+abstract class Trigger {
+  // ... existing fields ...
+  final String? condition;   // e.g. "{{ hour() >= 8 AND dayOfWeek() <= 5 }}"
+}
+```
+
+If `condition` evaluates to `false`, the trigger is skipped and logged as
+`"trigger_skipped": true` in the audit log.
+
 ## Orchestrator Pool
 
 Manages concurrent agent sessions spawned by triggers.
