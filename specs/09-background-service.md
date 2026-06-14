@@ -121,6 +121,127 @@ enum CustomTriggerType {
 }
 ```
 
+### 5. Smart Home Trigger
+
+Fires when a smart device's state matches a condition. Requires at least one
+`SmartHomeAdapter` configured (see `specs/16-smart-home.md`).
+
+```dart
+class SmartHomeTrigger extends Trigger {
+  final String deviceId;               // specific device to watch
+  final String? attributeKey;          // "on" | "temperature" | "locked" | null (= any change)
+  final TriggerCondition condition;
+  final List<String> agentIds;
+
+  // Implemented by subscribing to SmartHomeAdapter.stateChanges (WebSocket/MQTT stream)
+  // Evaluated in the foreground service; no polling — purely event-driven
+}
+
+class TriggerCondition {
+  final ConditionOperator operator;    // eq | neq | gt | lt | gte | lte | changed
+  final dynamic value;                 // threshold or expected value
+}
+```
+
+**Example triggers**:
+- Front door unlocked → run Security Check agent
+- Living room temperature < 18°C → run Heating agent
+- Motion sensor active between 00:00–06:00 → alert immediately via `karmik.notify`
+- TV turned on → start "Focus block" agent (dim lights, silence notifications)
+
+### 6. Focus Mode Trigger
+
+Fires when a focus session ends or when a focus milestone is reached.
+
+```dart
+class FocusTrigger extends Trigger {
+  final FocusTriggerType type;
+  final String agentId;
+}
+
+enum FocusTriggerType {
+  onSessionEnd,           // fires when a Pomodoro session completes
+  onSessionAbandoned,     // fires when user ends a session early
+  onDailyGoalReached,     // fires when cumulative focus time hits the daily goal
+}
+```
+
+**Example**: Focus Coach agent fires on `onSessionEnd` → delivers session stats notification
+("25-minute session complete. You've focused for 1h 40m today. Take a 5-minute break?").
+
+### 7. Health Trigger
+
+Fires on health milestones from Android Health Connect or Apple HealthKit.
+Not available on desktop or Web.
+
+```dart
+class HealthTrigger extends Trigger {
+  final HealthTriggerType type;
+  final int? threshold;     // for step-count triggers
+  final String agentId;
+}
+
+enum HealthTriggerType {
+  onDailyStepGoalReached,    // fires once per day when step threshold is hit
+  onLowActivityAlert,        // fires at end of day if steps < threshold (sedentary reminder)
+  onSleepDataAvailable,      // fires in the morning when overnight sleep data syncs
+}
+```
+
+**Example**: Wellness Check agent fires on `onSleepDataAvailable` → reads `health.sleep` and
+`health.steps` → delivers a morning briefing with sleep quality + yesterday's activity.
+
+### 8. Wake Word Trigger
+
+Fires when the wake word engine detects the configured phrase ("Hey Karmik").
+See `specs/20-voice.md` for the full wake word implementation.
+
+```dart
+class WakeWordTrigger extends Trigger {
+  final String agentId;             // agent to activate on detection
+  final double confidenceThreshold; // 0.0–1.0, default 0.7
+}
+```
+
+Platform: Android (background service), macOS (LaunchAgent), Windows (service), Linux
+(systemd). Not available on iOS or Web.
+
+**Behavior**: wake word detection runs continuously in the foreground service. On detection,
+the TriggerEngine fires a `WakeWordTriggerEvent` that spawns the configured agent (or the
+default agent if none is configured) with the transcribed utterance as its input.
+
+### 9. Inbound Webhook Trigger
+
+Fires when Karmik's webhook server (`localhost:5176`) receives an HTTP POST request.
+See `specs/24-automation-workflows.md` for full documentation.
+
+```dart
+class WebhookTrigger extends Trigger {
+  final String id;               // UUID (becomes URL path: /webhook/{id})
+  final String? authToken;       // required Bearer token for the webhook endpoint
+  final String agentId;
+  final String taskTemplate;     // can reference {{ payload.field }} from POST body
+  final String? condition;       // condition DSL (see below)
+}
+```
+
+Platform: Android (background service), macOS, Windows, Linux. iOS: foreground only.
+
+### Condition Expressions (All Trigger Types)
+
+Every trigger type now supports an optional `condition` field — a DSL expression evaluated
+before the agent is spawned. See `specs/24-automation-workflows.md` for full DSL syntax.
+
+```dart
+abstract class Trigger {
+  // ... existing fields ...
+  final String? condition;   // e.g. "{{ hour() >= 8 AND dayOfWeek() <= 5 }}"
+}
+```
+
+If `condition` evaluates to `false`, the trigger is skipped and logged as
+`"trigger_skipped": true` in the audit log.
+
 ## Orchestrator Pool
 
 Manages concurrent agent sessions spawned by triggers.
@@ -148,11 +269,33 @@ class OrchestratorPool {
 
 | Scenario | Strategy |
 |---|---|
-| Active foreground use | Full model loaded, foreground service running |
-| Screen off, plugged in | Background sessions can run, schedule heavy tasks here |
-| Screen off, on battery | Defer non-critical tasks to WorkManager (battery-aware) |
-| Doze mode | Only AlarmManager-exempt wakes for critical triggers |
-| Low battery (<15%) | Suspend all background agent sessions |
+| Active foreground use | Full model loaded, foreground service running, wake-lock held during inference |
+| Screen off, plugged in | Background sessions can run freely; schedule heavy model-load tasks here via `onChargingTrigger` |
+| Screen off, on battery | Defer non-critical tasks to WorkManager (battery-aware scheduler); WorkManager minimum interval is 15 minutes |
+| Doze mode | Only `AlarmManager.setExactAndAllowWhileIdle()` wakes are permitted; exact-time schedule triggers use this; notification triggers fire via `NotificationListenerService` which is exempt from Doze |
+| Low battery (<15%) | `BatteryManager.EXTRA_LEVEL` broadcast triggers suspension of all background agent sessions; queued triggers are preserved and resume when battery recovers above 20% |
+
+**Doze mode detection**: The app registers for `PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED`
+broadcast. When `PowerManager.isDeviceIdleMode()` returns `true`, the `OrchestratorPool`
+stops spawning new sessions. In-progress sessions are allowed to complete (inference is
+CPU-bound and does not require network), then the pool idles until Doze ends.
+
+**WorkManager constraints** used for deferrable tasks (e.g., daily summary, memory compaction):
+```dart
+final constraints = Constraints(
+  requiredNetworkType: NetworkType.not_required,
+  requiresBatteryNotLow: true,
+  requiresCharging: false,   // relaxed — runs on battery if not low
+);
+```
+WorkManager's minimum repeat interval is 15 minutes (Android OS limit). Any schedule trigger
+requiring finer granularity (e.g., "every 5 minutes") must use `AlarmManager` instead and
+will drain battery faster — warn the user in the trigger configuration UI.
+
+**Wake-lock strategy**: The foreground service holds a `PARTIAL_WAKE_LOCK` only during active
+inference (between `ModelRuntime.infer()` call and stream completion). It is released
+immediately after each inference call. This prevents screen-off from interrupting a mid-stream
+response while avoiding continuous wake-lock that would drain battery.
 
 **Foreground service notification** (minimal, persistent while background mode is active):
 - Icon: Karmik logo (small)
@@ -237,3 +380,8 @@ Triggers
 | `ACCESS_FINE_LOCATION` | Geofence triggers (user must grant) |
 | `POST_NOTIFICATIONS` | Deliver result notifications (Android 13+) |
 | `SCHEDULE_EXACT_ALARM` | Schedule triggers at precise times |
+
+**Minimum SDK requirement**: API 29 (Android 10). Background processing restrictions below API 29
+make the trigger daemon unreliable. Vulkan 1.1 (required for GPU-accelerated llama.cpp inference)
+is not reliably available on API < 29. See `specs/12-tech-stack.md` for the full Android version
+support matrix.

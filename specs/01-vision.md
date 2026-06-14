@@ -20,13 +20,14 @@ proactively get things done.
 
 ## The Solution
 
-Karmik is a local-first agentic AI orchestration platform for Android. It combines:
+Karmik is a local-first agentic AI orchestration platform for all your devices. It combines:
 
-1. **On-device inference** — models run on the phone, no network required
+1. **On-device inference** — models run locally, no network required (on capable hardware)
 2. **Named persistent agents** — AI personas with memory, tools, and purpose
-3. **Android system integration** — agents that can read notifications, manage tasks, access calendar
+3. **Deep system integration** — agents that can read notifications, manage tasks, access calendar (platform-specific capabilities; see `specs/15-platform-support.md`)
 4. **Background orchestration** — agents that act without being explicitly invoked
 5. **Plugin ecosystem** — extend capabilities with skills, rules, prompts, and scripts
+6. **Privacy Mode** — a hardware-locked setting that guarantees zero external network calls from the AI layer
 
 ## Positioning Statement
 
@@ -37,14 +38,17 @@ a checkbox — it is the core product differentiation.
 
 ## Target User
 
-**Primary**: Privacy-conscious Android power users who want AI in their daily workflow but distrust
-cloud services with their personal data.
+**Primary**: Privacy-conscious power users (Android, iPhone, Mac, PC, Linux) who want AI in their
+daily workflow but distrust cloud services with their personal data.
 
 **Secondary**: Productivity-focused users who want a "getting things done" AI that requires zero
 subscription fees and works offline.
 
-**Tertiary (Stage 2)**: Android developers who want to build agentic features without building the
-inference, memory, and orchestration layers themselves.
+**Tertiary**: Users who need to keep their data on-device due to regulatory, professional, or
+personal constraints (healthcare, legal, journalism).
+
+**Quaternary (Stage 2)**: Developers who want to embed the Karmik agent runtime into their own apps
+without building the inference, memory, and orchestration layers themselves.
 
 ## The Killer Demo
 
@@ -65,17 +69,19 @@ required (Gemma 4 2B) fits on any phone with 6GB+ RAM today.
 
 ## Roadmap
 
-### Stage 1 — Consumer App
+### Stage 1 — Consumer App (Android + macOS + iOS)
 - On-device inference with model manager
 - Named persistent agents with memory
-- Floating overlay + optional launcher mode
-- Core Android tool integrations (notifications, calendar, tasks, SMS, files)
+- Floating overlay (Android/macOS) + optional launcher mode (Android)
+- Core system integrations: notifications, calendar, tasks, files (platform-specific breadth)
 - Plugin system (local install)
 - Background orchestration service
 - Optional remote inference (Groq, Gemini, Claude, custom endpoints)
+- **Privacy Mode** — lockdown setting that enforces local-only inference
 
-### Stage 2 — Developer SDK
-- Dart/Kotlin SDK: embed the Karmik agent runtime in any Android app
+### Stage 2 — All Platforms + Developer SDK
+- Windows, Linux, and Web support
+- Dart/Swift/Kotlin SDK: embed the Karmik agent runtime in any app
 - Plugin marketplace
 - Agent sharing and export
 - MCP server ecosystem integration
@@ -84,6 +90,6 @@ required (Gemma 4 2B) fits on any phone with 6GB+ RAM today.
 ## Non-Goals
 
 - A cloud service of any kind
-- iOS as a primary target (Stage 1 is Android-first; the system integration story is Android-specific)
 - A general-purpose chat app (there are plenty; Karmik is about agency, not conversation)
 - A model training or fine-tuning platform
+- Identical feature sets across all platforms (system integration depth varies; see `specs/15-platform-support.md`)
