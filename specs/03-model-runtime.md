@@ -148,6 +148,12 @@ The catalog is a JSON file bundled with the app and periodically refreshed from 
 | Qwen 2.5 7B Q4_K_M | 7B | ~4.5GB | Yes | No | High (8GB RAM) |
 | DeepSeek-R1 1.5B Q8 | 1.5B | ~1.7GB | No | No | Entry (reasoning) |
 
+**Hugging Face Hub integration**: in addition to the curated catalog, users can browse
+and download any GGUF model directly from the Hugging Face Hub, and on desktop can convert
+non-GGUF safetensors models to GGUF. See `specs/29-huggingface.md` for full details.
+Downloaded HuggingFace models appear in the Installed tab and are handled identically to
+curated models by the `LlamaCppRuntime`.
+
 ## Device Capability Check
 
 Run before allowing a model download. Checks are gating — download button is hidden/disabled,
