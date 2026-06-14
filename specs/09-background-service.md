@@ -121,6 +121,34 @@ enum CustomTriggerType {
 }
 ```
 
+### 5. Smart Home Trigger
+
+Fires when a smart device's state matches a condition. Requires at least one
+`SmartHomeAdapter` configured (see `specs/16-smart-home.md`).
+
+```dart
+class SmartHomeTrigger extends Trigger {
+  final String deviceId;               // specific device to watch
+  final String? attributeKey;          // "on" | "temperature" | "locked" | null (= any change)
+  final TriggerCondition condition;
+  final List<String> agentIds;
+
+  // Implemented by subscribing to SmartHomeAdapter.stateChanges (WebSocket/MQTT stream)
+  // Evaluated in the foreground service; no polling — purely event-driven
+}
+
+class TriggerCondition {
+  final ConditionOperator operator;    // eq | neq | gt | lt | gte | lte | changed
+  final dynamic value;                 // threshold or expected value
+}
+```
+
+**Example triggers**:
+- Front door unlocked → run Security Check agent
+- Living room temperature < 18°C → run Heating agent
+- Motion sensor active between 00:00–06:00 → alert immediately via `karmik.notify`
+- TV turned on → start "Focus block" agent (dim lights, silence notifications)
+
 ## Orchestrator Pool
 
 Manages concurrent agent sessions spawned by triggers.

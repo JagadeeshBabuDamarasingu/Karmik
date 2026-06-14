@@ -200,6 +200,56 @@ location.current
   Output: { "latitude": float, "longitude": float, "accuracy": float, "address"?: string }
 ```
 
+### Smart Home Tools
+
+Controls smart devices via the active `SmartHomeAdapter` (see `specs/16-smart-home.md`).
+All tools operate against whichever hub(s) the user has configured. If no hub is configured,
+every tool returns `success: false` with `"No smart home hub configured. Add one in Settings → Smart Home."`.
+
+```
+smarthome.list_devices
+  → List all known smart devices and their current state
+  Input: { "room"?: string, "type"?: string, "onlyOn"?: bool }
+  Output: [{ "id", "name", "type", "room", "on": bool, "state": {} }]
+
+smarthome.get_device
+  → Get a specific device by ID or name
+  Input: { "id"?: string, "name"?: string }
+  Output: { "id", "name", "type", "room", "on": bool, "state": {}, "capabilities": [] }
+
+smarthome.control
+  → Send a command to a device or group of devices
+  Input: {
+    "id"?: string,           // device ID (preferred)
+    "name"?: string,         // device name (fuzzy matched if ID unknown)
+    "room"?: string,         // target all devices in a room
+    "type"?: string,         // target all devices of a type (e.g. "light")
+    "command": string,       // "on" | "off" | "toggle" | "set"
+    "value"?: any            // for "set": number (brightness 0–100), string (color), object (thermostat settings)
+  }
+  Output: { "success": bool, "devicesAffected": int, "newState": {} }
+
+smarthome.list_rooms
+  → List all rooms / areas and a summary of their device states
+  Input: {}
+  Output: [{ "id", "name", "deviceCount": int, "devicesOn": int }]
+
+smarthome.run_scene
+  → Activate a saved scene or routine (e.g. "Good morning", "Movie time")
+  Input: { "name": string }
+  Output: { "success": bool, "scene": string }
+
+smarthome.query_sensor
+  → Read the current value from a sensor (temperature, humidity, motion, door, etc.)
+  Input: { "id"?: string, "name"?: string, "type"?: string }
+  Output: { "id", "name", "type", "value": any, "unit"?: string, "lastUpdated": ISO8601 }
+```
+
+**Permission**: `tools.smarthome.*` must be explicitly granted per agent. Default: off.
+Smart home tools are **always local-network** — they never route through the internet unless
+the configured hub uses a cloud API (Tuya, SmartThings). In Privacy Mode, cloud-hub adapters
+are blocked; local-hub adapters (Home Assistant, Matter, Philips Hue LAN) are allowed.
+
 ### Network Tools
 
 ```

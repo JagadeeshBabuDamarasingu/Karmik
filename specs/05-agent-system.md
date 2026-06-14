@@ -178,11 +178,11 @@ Pre-built agents available on first launch. Users can clone and customize.
 
 | Agent | Default Mode | Default Tools | Purpose |
 |---|---|---|---|
-| Task Capture | ReAct | notifications.read, tasks.create | GTD capture from notifications/voice |
-| Morning Briefing | Autopilot | calendar.read, tasks.read, weather | Daily summary on schedule |
+| Task Capture | ReAct | notifications.list, tasks.create | GTD capture from notifications/voice |
+| Morning Briefing | Autopilot | calendar.list_events, tasks.list, smarthome.query_sensor | Daily summary on schedule |
 | Meeting Notes | ReAct | microphone.record, tasks.create, calendar.update | Call recording → structured notes |
 | Research | Plan-Execute | http.get, browser.fetch, memory.store | Deep research with source tracking |
-| Home Automation | ReAct + Co-pilot | http.post, notifications.read | Smart home via API calls |
+| Home Automation | ReAct + Co-pilot | smarthome.*, location.current | Smart device control; dangerous commands (lock/camera) always use Co-pilot |
 
 ## Agent Executor Lifecycle
 
