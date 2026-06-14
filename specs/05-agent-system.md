@@ -92,6 +92,43 @@ User task
 - Dependency specification: planner outputs a DAG, not just a flat list
 - Best for: complex research tasks, batch operations, long-horizon planning
 
+**DAG format** (planner outputs this JSON, parsed by the `OrchestratorPool`):
+
+```json
+{
+  "goal": "Research and summarize the top 3 competitors",
+  "subtasks": [
+    {
+      "id": "s1",
+      "task": "Search the web for Competitor A's pricing page",
+      "dependsOn": []
+    },
+    {
+      "id": "s2",
+      "task": "Search the web for Competitor B's pricing page",
+      "dependsOn": []
+    },
+    {
+      "id": "s3",
+      "task": "Search the web for Competitor C's pricing page",
+      "dependsOn": []
+    },
+    {
+      "id": "s4",
+      "task": "Synthesize the three pricing pages into a comparison table",
+      "dependsOn": ["s1", "s2", "s3"]
+    }
+  ]
+}
+```
+
+Rules:
+- `dependsOn` lists subtask IDs that must complete before this subtask starts
+- Subtasks with empty `dependsOn` are eligible to run in parallel immediately
+- If any dependency fails with an unrecoverable error, dependent subtasks are skipped and
+  the aggregator notes the failure in the final response
+- Max subtask count: 10 (planner is instructed to consolidate if it would exceed this)
+
 ### Mode 3: Autopilot
 
 Background, fully autonomous. Agent runs without user interaction until complete.

@@ -148,11 +148,33 @@ class OrchestratorPool {
 
 | Scenario | Strategy |
 |---|---|
-| Active foreground use | Full model loaded, foreground service running |
-| Screen off, plugged in | Background sessions can run, schedule heavy tasks here |
-| Screen off, on battery | Defer non-critical tasks to WorkManager (battery-aware) |
-| Doze mode | Only AlarmManager-exempt wakes for critical triggers |
-| Low battery (<15%) | Suspend all background agent sessions |
+| Active foreground use | Full model loaded, foreground service running, wake-lock held during inference |
+| Screen off, plugged in | Background sessions can run freely; schedule heavy model-load tasks here via `onChargingTrigger` |
+| Screen off, on battery | Defer non-critical tasks to WorkManager (battery-aware scheduler); WorkManager minimum interval is 15 minutes |
+| Doze mode | Only `AlarmManager.setExactAndAllowWhileIdle()` wakes are permitted; exact-time schedule triggers use this; notification triggers fire via `NotificationListenerService` which is exempt from Doze |
+| Low battery (<15%) | `BatteryManager.EXTRA_LEVEL` broadcast triggers suspension of all background agent sessions; queued triggers are preserved and resume when battery recovers above 20% |
+
+**Doze mode detection**: The app registers for `PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED`
+broadcast. When `PowerManager.isDeviceIdleMode()` returns `true`, the `OrchestratorPool`
+stops spawning new sessions. In-progress sessions are allowed to complete (inference is
+CPU-bound and does not require network), then the pool idles until Doze ends.
+
+**WorkManager constraints** used for deferrable tasks (e.g., daily summary, memory compaction):
+```dart
+final constraints = Constraints(
+  requiredNetworkType: NetworkType.not_required,
+  requiresBatteryNotLow: true,
+  requiresCharging: false,   // relaxed — runs on battery if not low
+);
+```
+WorkManager's minimum repeat interval is 15 minutes (Android OS limit). Any schedule trigger
+requiring finer granularity (e.g., "every 5 minutes") must use `AlarmManager` instead and
+will drain battery faster — warn the user in the trigger configuration UI.
+
+**Wake-lock strategy**: The foreground service holds a `PARTIAL_WAKE_LOCK` only during active
+inference (between `ModelRuntime.infer()` call and stream completion). It is released
+immediately after each inference call. This prevents screen-off from interrupting a mid-stream
+response while avoiding continuous wake-lock that would drain battery.
 
 **Foreground service notification** (minimal, persistent while background mode is active):
 - Icon: Karmik logo (small)
@@ -237,3 +259,8 @@ Triggers
 | `ACCESS_FINE_LOCATION` | Geofence triggers (user must grant) |
 | `POST_NOTIFICATIONS` | Deliver result notifications (Android 13+) |
 | `SCHEDULE_EXACT_ALARM` | Schedule triggers at precise times |
+
+**Minimum SDK requirement**: API 29 (Android 10). Background processing restrictions below API 29
+make the trigger daemon unreliable. Vulkan 1.1 (required for GPU-accelerated llama.cpp inference)
+is not reliably available on API < 29. See `specs/12-tech-stack.md` for the full Android version
+support matrix.

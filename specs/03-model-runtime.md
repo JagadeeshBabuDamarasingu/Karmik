@@ -182,6 +182,46 @@ class DeviceCapabilityChecker {
 - Multiple concurrent downloads not allowed (queue-based)
 - Automatic retry on network interruption (up to 3 attempts)
 
+### Download State Machine
+
+```
+         user enqueues
+idle ──────────────────► queued
+                            │
+                    slot opens (prev download done/failed)
+                            │
+                            ▼
+                       downloading ◄──── resume (user or auto-retry)
+                         │     │
+              user pause │     │ network drop / app kill
+                         │     │
+                         ▼     ▼
+                        paused (partial file retained on disk)
+                            │
+                    user resumes or app restarts
+                            │
+                            ▼
+                       downloading
+                            │
+                   all bytes received
+                            │
+                            ▼
+                        verifying (SHA-256 check)
+                         │     │
+              checksum ok │     │ checksum fail
+                         │     │
+                         ▼     ▼
+                      complete  failed
+                                │
+                       partial file deleted, re-queued (up to 3 auto-retries),
+                       then user-visible error if retries exhausted
+```
+
+**State persistence**: Download state and bytes-received offset are written to `karmik_models.db`
+after each chunk so that a process kill mid-download resumes from the last written position on
+next launch. The partial `.gguf.part` file is kept alongside the target path until verification
+succeeds, then renamed to the final filename atomically.
+
 ## Per-Chat Model Selection and Hot-Swap
 
 - Each chat/agent session can specify a `modelOverride` in its config

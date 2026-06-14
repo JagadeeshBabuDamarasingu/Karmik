@@ -13,7 +13,7 @@ All persistence is SQLite-based (no external database process required).
 | Technology | Version | Purpose |
 |---|---|---|
 | Flutter | ≥3.22 | Cross-platform UI framework (Android primary) |
-| Dart | ≥3.4 | Application language |
+| Dart | ≥3.13-dev | Application language (3.13-dev required for dot-shorthand syntax used throughout) |
 | Material 3 | — | Design system (dark-first, OLED-optimized) |
 | flutter_riverpod | ^2.x | State management |
 | go_router | ^14.x | Declarative navigation |

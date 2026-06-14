@@ -82,9 +82,9 @@ class AnthropicAdapter implements ModelRuntime {
 }
 
 enum ClaudeModel {
-  haiku,    // claude-haiku-4-5 — fast, cheapest ($1/$5 per M tokens)
-  sonnet,   // claude-sonnet-4-6 — best balance
-  opus,     // claude-opus-4-8 — most capable
+  haiku,    // API model ID: claude-haiku-4-5 — fast, cheapest ($1/$5 per M tokens)
+  sonnet,   // API model ID: claude-sonnet-4-6 — best balance
+  opus,     // API model ID: claude-opus-4-8 — most capable
 }
 ```
 
